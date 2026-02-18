@@ -27,9 +27,11 @@ export default function ChatListItem({ chat, isActive, currentUserId, onClick })
   // Last message preview
   const lastMsg = chat.last_message;
   const preview = lastMsg
-    ? lastMsg.content.length > 40
-      ? lastMsg.content.slice(0, 40) + "…"
-      : lastMsg.content
+    ? lastMsg.image_url
+      ? "📷 Photo"
+      : lastMsg.content?.length > 40
+        ? lastMsg.content.slice(0, 40) + "…"
+        : lastMsg.content || ""
     : "No messages yet";
 
   const time = lastMsg ? dayjs(lastMsg.created_at).format("HH:mm") : "";

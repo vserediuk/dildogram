@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { useChatStore } from "../store/chatStore";
 import api from "../api";
 import { mediaUrl } from "../utils";
 import toast from "react-hot-toast";
 
 export default function ProfilePage() {
   const { user, fetchMe, logout } = useAuthStore();
+  const { fetchChats } = useChatStore();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -33,6 +35,7 @@ export default function ProfilePage() {
         bio: bio || null,
       });
       await fetchMe();
+      await fetchChats();
       toast.success("Profile updated");
     } catch (err) {
       toast.error(err.response?.data?.detail || "Update failed");
@@ -51,6 +54,7 @@ export default function ProfilePage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       await fetchMe();
+      await fetchChats();
       toast.success("Avatar updated");
     } catch (err) {
       toast.error("Upload failed");
