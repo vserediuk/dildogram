@@ -4,12 +4,10 @@ from pydantic_settings import BaseSettings
 
 def _build_db_url(raw: str, driver: str) -> str:
     """Convert a generic postgresql:// URL to one with the given driver."""
-    if raw.startswith("postgres://"):
-        raw = raw.replace("postgres://", "postgresql://", 1)
-    if raw.startswith("postgresql://"):
-        return raw.replace("postgresql://", f"postgresql+{driver}://", 1)
-    # Already has a driver, just return
-    return raw
+    import re
+    # Strip any existing scheme variant to a canonical form
+    raw = re.sub(r'^postgres(ql)?(\+\w+)?://', 'postgresql://', raw, count=1)
+    return raw.replace('postgresql://', f'postgresql+{driver}://', 1)
 
 
 _raw_db = os.getenv(

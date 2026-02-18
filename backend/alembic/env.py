@@ -8,7 +8,7 @@ from sqlalchemy import engine_from_config, pool
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.database import Base
+from app.base import Base
 from app.models import User, Chat, Message, ReadReceipt, SMSCode  # noqa: F401
 from app.config import settings
 
