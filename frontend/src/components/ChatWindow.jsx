@@ -4,14 +4,19 @@ import { useChatStore } from "../store/chatStore";
 import { sendWS } from "../hooks/useWebSocket";
 import { mediaUrl } from "../utils";
 import MessageBubble from "./MessageBubble";
+import toast from "react-hot-toast";
 import dayjs from "dayjs";
 
 export default function ChatWindow() {
   const { user } = useAuthStore();
-  const { activeChat, messages, fetchMessages, typingUsers, onlineUsers } = useChatStore();
+  const { activeChat, messages, fetchMessages, typingUsers, onlineUsers, sendImage } = useChatStore();
   const [text, setText] = useState("");
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (activeChat) {
@@ -40,6 +45,40 @@ export default function ChatWindow() {
     if (!trimmed || !activeChat) return;
     sendWS({ type: "message", chat_id: activeChat.id, content: trimmed });
     setText("");
+  };
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Only images are allowed");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image too large (max 10 MB)");
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleCancelImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleSendImage = async () => {
+    if (!imageFile || !activeChat) return;
+    setUploading(true);
+    try {
+      await sendImage(activeChat.id, imageFile);
+      handleCancelImage();
+    } catch (err) {
+      toast.error("Failed to send image");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleTyping = useCallback(() => {
@@ -135,9 +174,48 @@ export default function ChatWindow() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Image preview */}
+      {imagePreview && (
+        <div className="px-4 py-2 bg-tg-sidebar border-t border-gray-700/50">
+          <div className="relative inline-block">
+            <img src={imagePreview} alt="Preview" className="max-h-32 rounded-lg" />
+            <button
+              onClick={handleCancelImage}
+              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs hover:bg-red-600"
+            >
+              ✕
+            </button>
+          </div>
+          <button
+            onClick={handleSendImage}
+            disabled={uploading}
+            className="ml-3 px-4 py-2 bg-tg-blue rounded-lg text-sm font-semibold hover:brightness-110 transition disabled:opacity-50"
+          >
+            {uploading ? "Sending..." : "Send Image"}
+          </button>
+        </div>
+      )}
+
       {/* Input */}
       <form onSubmit={handleSend} className="px-4 py-3 bg-tg-sidebar border-t border-gray-700/50">
         <div className="flex items-center gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-tg-muted hover:text-tg-text hover:bg-tg-input transition"
+            title="Send image"
+          >
+            <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
+              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+            </svg>
+          </button>
           <input
             type="text"
             value={text}

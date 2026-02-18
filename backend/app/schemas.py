@@ -89,7 +89,8 @@ class MessageOut(BaseModel):
     chat_id: uuid.UUID
     sender_id: Optional[uuid.UUID] = None
     sender: Optional[UserOut] = None
-    content: str
+    content: Optional[str] = None
+    image_url: Optional[str] = None
     status: str
     created_at: datetime
 
