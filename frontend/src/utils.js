@@ -1,4 +1,18 @@
 /**
+ * Strip excessive combining Unicode characters (Zalgo text) from a string.
+ * Allows up to 2 combining marks per base character to preserve
+ * legitimate diacritics while preventing layout-breaking Zalgo.
+ */
+export function sanitizeText(text) {
+  if (!text) return text;
+  // Remove excessive combining diacritical marks (Unicode categories Mn, Me, Mc)
+  // Keep at most 2 combining marks after each base character
+  return text.replace(/(\P{M})(\p{M}+)/gu, (match, base, marks) => {
+    return base + [...marks].slice(0, 2).join("");
+  });
+}
+
+/**
  * Resolve a relative media path (e.g. /uploads/avatars/img.jpg)
  * to an absolute URL when the app is deployed on a separate domain.
  */

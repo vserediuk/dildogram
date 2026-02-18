@@ -33,6 +33,12 @@ body {
   border-radius: 3px;
 }
 
+/* Prevent Zalgo / combining-char text from overflowing message bubbles */
+.break-words {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
 /* Message status checkmarks */
 .status-sent::after {
   content: "✓";

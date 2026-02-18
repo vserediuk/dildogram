@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import { useChatStore } from "../store/chatStore";
-import { mediaUrl } from "../utils";
+import { mediaUrl, sanitizeText } from "../utils";
 
 export default function ChatListItem({ chat, isActive, currentUserId, onClick }) {
   const onlineUsers = useChatStore((s) => s.onlineUsers);
@@ -60,14 +60,14 @@ export default function ChatListItem({ chat, isActive, currentUserId, onClick })
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-baseline">
-          <span className="font-medium truncate text-sm">{title}</span>
+          <span className="font-medium truncate text-sm">{sanitizeText(title)}</span>
           <span className="text-xs text-tg-muted flex-shrink-0 ml-2">{time}</span>
         </div>
         <div className="flex items-center gap-1">
           {lastMsg && lastMsg.sender_id === currentUserId && (
             <span className={`status-${lastMsg.status} text-xs`} />
           )}
-          <p className="text-sm text-tg-muted truncate">{preview}</p>
+          <p className="text-sm text-tg-muted truncate">{sanitizeText(preview)}</p>
         </div>
       </div>
     </div>

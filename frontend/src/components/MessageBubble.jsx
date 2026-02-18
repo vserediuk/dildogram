@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import dayjs from "dayjs";
-import { mediaUrl } from "../utils";
+import { mediaUrl, sanitizeText } from "../utils";
 
 function MiniProfile({ user, onClose }) {
   const ref = useRef(null);
@@ -75,7 +75,7 @@ export default function MessageBubble({ message, isOwn, onEdit, onDelete }) {
   return (
     <div className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-1 group`}>
       <div
-        className={`relative max-w-[70%] ${hasImage ? "p-1" : "px-3 py-2"} rounded-2xl text-sm leading-relaxed ${
+        className={`relative max-w-[70%] ${hasImage ? "p-1" : "px-3 py-2"} rounded-2xl text-sm leading-relaxed overflow-hidden ${
           isOwn
             ? "bg-tg-bubble-own rounded-br-md"
             : "bg-tg-sidebar rounded-bl-md"
@@ -89,7 +89,7 @@ export default function MessageBubble({ message, isOwn, onEdit, onDelete }) {
               onClick={() => setShowProfile(!showProfile)}
               className="text-tg-blue text-xs font-semibold mb-0.5 hover:underline cursor-pointer"
             >
-              {message.sender.display_name || message.sender.phone}
+              {sanitizeText(message.sender.display_name || message.sender.phone)}
             </button>
             {showProfile && (
               <MiniProfile user={message.sender} onClose={() => setShowProfile(false)} />
@@ -112,7 +112,7 @@ export default function MessageBubble({ message, isOwn, onEdit, onDelete }) {
         {/* Text content + time + status */}
         <div className={`flex items-end gap-2 ${hasImage ? "px-2 pb-1 pt-1" : ""}`}>
           {message.content && (
-            <span className="break-words whitespace-pre-wrap">{message.content}</span>
+            <span className="break-words whitespace-pre-wrap overflow-hidden max-w-full">{sanitizeText(message.content)}</span>
           )}
           <span className="flex items-center gap-0.5 flex-shrink-0 self-end ml-auto">
             {message.is_edited && (
