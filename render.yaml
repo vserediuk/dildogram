@@ -32,7 +32,7 @@ services:
       - key: UPLOAD_DIR
         value: /app/uploads
       - key: FRONTEND_URL
-        value: https://messenger-frontend.onrender.com   # ← замени на свой URL после первого деплоя
+        value: https://messenger-frontend-7db9.onrender.com
 
   # ───── Frontend (Static Site) ─────
   - type: web

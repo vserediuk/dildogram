@@ -23,6 +23,13 @@ _origins = [
     "http://localhost:3000",
     settings.FRONTEND_URL,
 ]
+# Allow extra origins via env (comma-separated)
+_extra = os.getenv("EXTRA_CORS_ORIGINS", "")
+if _extra:
+    _origins.extend([o.strip() for o in _extra.split(",") if o.strip()])
+# Filter out empty/duplicate values
+_origins = list({o for o in _origins if o})
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
