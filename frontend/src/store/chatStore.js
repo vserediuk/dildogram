@@ -38,9 +38,10 @@ export const useChatStore = create((set, get) => ({
     // Message will arrive via WebSocket
   },
 
-  sendImage: async (chatId, file) => {
+  sendImage: async (chatId, file, caption = "") => {
     const formData = new FormData();
     formData.append("file", file);
+    if (caption.trim()) formData.append("caption", caption.trim());
     await api.post(`/chats/${chatId}/messages/image`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });

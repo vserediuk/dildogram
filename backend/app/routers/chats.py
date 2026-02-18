@@ -210,10 +210,11 @@ MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
 async def send_image_message(
     chat_id: uuid.UUID,
     file: UploadFile = File(...),
+    caption: str = "",
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Upload an image and create a message with image_url."""
+    """Upload an image and create a message with image_url and optional caption."""
     # Check membership
     membership = await db.execute(
         select(chat_members).where(
@@ -243,7 +244,7 @@ async def send_image_message(
 
     image_url = f"/uploads/chat_images/{filename}"
 
-    msg = Message(chat_id=chat_id, sender_id=user.id, content=None, image_url=image_url, status="sent")
+    msg = Message(chat_id=chat_id, sender_id=user.id, content=caption.strip() or None, image_url=image_url, status="sent")
     db.add(msg)
     await db.commit()
     await db.refresh(msg)

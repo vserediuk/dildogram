@@ -7,6 +7,46 @@ import MessageBubble from "./MessageBubble";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 
+function HeaderMiniProfile({ user, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
+  if (!user) return null;
+  return (
+    <div
+      ref={ref}
+      className="absolute top-full left-0 mt-1 bg-tg-sidebar border border-gray-600 rounded-xl shadow-2xl p-4 min-w-[250px] max-w-[320px] z-50"
+    >
+      <div className="flex items-center gap-3 mb-3">
+        {user.avatar_url ? (
+          <img src={mediaUrl(user.avatar_url)} alt="" className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
+        ) : (
+          <div className="w-14 h-14 rounded-full bg-tg-blue flex items-center justify-center text-xl font-bold flex-shrink-0">
+            {(user.display_name || user.phone)?.[0]?.toUpperCase() || "?"}
+          </div>
+        )}
+        <div className="min-w-0">
+          <div className="font-semibold truncate">{user.display_name || user.phone}</div>
+          {user.username && (
+            <div className="text-tg-blue text-sm truncate">@{user.username}</div>
+          )}
+          <div className="text-xs text-tg-muted">{user.phone}</div>
+        </div>
+      </div>
+      {user.bio && (
+        <div className="text-sm text-tg-muted leading-relaxed border-t border-gray-600/50 pt-2">
+          {user.bio}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ChatWindow() {
   const { user } = useAuthStore();
   const { activeChat, messages, fetchMessages, typingUsers, onlineUsers, sendImage, editMessage, deleteMessage } = useChatStore();
@@ -15,6 +55,7 @@ export default function ChatWindow() {
   const [imageFile, setImageFile] = useState(null);
   const [editingMsg, setEditingMsg] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [showHeaderProfile, setShowHeaderProfile] = useState(false);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -40,18 +81,39 @@ export default function ChatWindow() {
     });
   }, [messages, activeChat?.id, user?.id]);
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     const trimmed = text.trim();
-    if (!trimmed || !activeChat) return;
+    if (!activeChat) return;
 
+    // Editing mode
     if (editingMsg) {
+      if (!trimmed) return;
       editMessage(activeChat.id, editingMsg.id, trimmed)
         .then(() => setEditingMsg(null))
         .catch(() => toast.error("Failed to edit message"));
-    } else {
-      sendWS({ type: "message", chat_id: activeChat.id, content: trimmed });
+      setText("");
+      return;
     }
+
+    // Image + optional text
+    if (imageFile) {
+      setUploading(true);
+      try {
+        await sendImage(activeChat.id, imageFile, trimmed);
+        handleCancelImage();
+        setText("");
+      } catch (err) {
+        toast.error("Failed to send image");
+      } finally {
+        setUploading(false);
+      }
+      return;
+    }
+
+    // Text only
+    if (!trimmed) return;
+    sendWS({ type: "message", chat_id: activeChat.id, content: trimmed });
     setText("");
   };
 
@@ -88,19 +150,6 @@ export default function ChatWindow() {
     setImageFile(null);
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const handleSendImage = async () => {
-    if (!imageFile || !activeChat) return;
-    setUploading(true);
-    try {
-      await sendImage(activeChat.id, imageFile);
-      handleCancelImage();
-    } catch (err) {
-      toast.error("Failed to send image");
-    } finally {
-      setUploading(false);
-    }
   };
 
   const handleTyping = useCallback(() => {
@@ -150,7 +199,7 @@ export default function ChatWindow() {
   return (
     <div className="flex-1 flex flex-col bg-tg-dark h-screen">
       {/* Header */}
-      <div className="px-4 py-3 bg-tg-sidebar border-b border-gray-700/50 flex items-center gap-3">
+      <div className="px-4 py-3 bg-tg-sidebar border-b border-gray-700/50 flex items-center gap-3 relative">
         <div className="relative">
           {avatarUrl ? (
             <img src={mediaUrl(avatarUrl)} alt="" className="w-10 h-10 rounded-full object-cover" />
@@ -163,13 +212,21 @@ export default function ChatWindow() {
             <div className="absolute bottom-0 right-0 w-3 h-3 bg-tg-green rounded-full border-2 border-tg-sidebar" />
           )}
         </div>
-        <div>
-          <div className="font-semibold text-sm">{title}</div>
+        <div className="relative">
+          <button
+            onClick={() => otherUser && setShowHeaderProfile(!showHeaderProfile)}
+            className={`font-semibold text-sm text-left ${otherUser ? "hover:text-tg-blue cursor-pointer" : ""}`}
+          >
+            {title}
+          </button>
           <div className="text-xs text-tg-muted">
             {typingNames.length > 0
               ? `${typingNames.join(", ")} typing...`
               : subtitle}
           </div>
+          {showHeaderProfile && otherUser && (
+            <HeaderMiniProfile user={otherUser} onClose={() => setShowHeaderProfile(false)} />
+          )}
         </div>
       </div>
 
@@ -215,7 +272,7 @@ export default function ChatWindow() {
 
       {/* Image preview */}
       {imagePreview && (
-        <div className="px-4 py-2 bg-tg-sidebar border-t border-gray-700/50">
+        <div className="px-4 py-2 bg-tg-sidebar border-t border-gray-700/50 flex items-center gap-3">
           <div className="relative inline-block">
             <img src={imagePreview} alt="Preview" className="max-h-32 rounded-lg" />
             <button
@@ -225,13 +282,6 @@ export default function ChatWindow() {
               ✕
             </button>
           </div>
-          <button
-            onClick={handleSendImage}
-            disabled={uploading}
-            className="ml-3 px-4 py-2 bg-tg-blue rounded-lg text-sm font-semibold hover:brightness-110 transition disabled:opacity-50"
-          >
-            {uploading ? "Sending..." : "Send Image"}
-          </button>
         </div>
       )}
 
@@ -268,7 +318,7 @@ export default function ChatWindow() {
           />
           <button
             type="submit"
-            disabled={!text.trim()}
+            disabled={(!text.trim() && !imageFile) || uploading}
             className="w-10 h-10 bg-tg-blue rounded-full flex items-center justify-center hover:brightness-110 transition disabled:opacity-30"
           >
             <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current text-white">
