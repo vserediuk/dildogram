@@ -134,6 +134,7 @@ async def _handle_ws_message(user: User, data: dict, db: AsyncSession):
             sender=sender_out,
             content=msg.content,
             image_url=msg.image_url,
+            is_edited=msg.is_edited,
             status=msg.status if isinstance(msg.status, str) else msg.status.value,
             created_at=msg.created_at,
         )

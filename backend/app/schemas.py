@@ -91,6 +91,7 @@ class MessageOut(BaseModel):
     sender: Optional[UserOut] = None
     content: Optional[str] = None
     image_url: Optional[str] = None
+    is_edited: bool = False
     status: str
     created_at: datetime
 

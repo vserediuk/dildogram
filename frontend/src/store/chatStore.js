@@ -108,7 +108,7 @@ export const useChatStore = create((set, get) => ({
   applyMessageEdit: (message) => {
     set({
       messages: get().messages.map((m) =>
-        m.id === message.id ? { ...m, content: message.content, edited: true } : m
+        m.id === message.id ? { ...m, content: message.content, is_edited: true } : m
       ),
     });
     // Update last_message in chat list if needed

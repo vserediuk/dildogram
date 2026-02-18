@@ -374,6 +374,7 @@ async def edit_message(
         raise HTTPException(403, "You can only edit your own messages")
 
     msg.content = body.content
+    msg.is_edited = True
     await db.commit()
     await db.refresh(msg)
 

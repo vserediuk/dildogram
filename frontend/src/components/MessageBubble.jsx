@@ -59,7 +59,7 @@ export default function MessageBubble({ message, isOwn, onEdit, onDelete }) {
             <span className="break-words whitespace-pre-wrap">{message.content}</span>
           )}
           <span className="flex items-center gap-0.5 flex-shrink-0 self-end ml-auto">
-            {message.edited && (
+            {message.is_edited && (
               <span className="text-[10px] text-tg-muted leading-none mr-0.5">edited</span>
             )}
             <span className="text-[10px] text-tg-muted leading-none">{time}</span>
