@@ -85,12 +85,11 @@ async def verify_sms_code(body: VerifySMSCode, db: AsyncSession = Depends(get_db
 
     sms.is_used = True
 
-    # Find or create user
+    # User must already exist for login
     user_result = await db.execute(select(User).where(User.phone == body.phone))
     user = user_result.scalar_one_or_none()
     if not user:
-        user = User(phone=body.phone, display_name=body.phone)
-        db.add(user)
+        raise HTTPException(status_code=401, detail="Account not found. Please sign up first.")
 
     await db.commit()
     await db.refresh(user)
