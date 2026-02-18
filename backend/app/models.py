@@ -83,12 +83,14 @@ class Message(Base):
     content = Column(Text, nullable=True)
     image_url = Column(String(512), nullable=True)
     is_edited = Column(Boolean, default=False, nullable=False)
+    forwarded_from_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     status = Column(Enum("sent", "delivered", "read", name="messagestatus", create_type=False), default="sent", nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     chat = relationship("Chat", back_populates="messages")
-    sender = relationship("User", back_populates="messages")
+    sender = relationship("User", back_populates="messages", foreign_keys=[sender_id])
+    forwarded_from = relationship("User", foreign_keys=[forwarded_from_id], lazy="selectin")
     read_receipts = relationship("ReadReceipt", back_populates="message", lazy="selectin", cascade="all, delete-orphan")
 
 

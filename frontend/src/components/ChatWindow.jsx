@@ -4,6 +4,7 @@ import { useChatStore } from "../store/chatStore";
 import { sendWS } from "../hooks/useWebSocket";
 import { mediaUrl } from "../utils";
 import MessageBubble from "./MessageBubble";
+import ForwardModal from "./ForwardModal";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 
@@ -54,6 +55,7 @@ export default function ChatWindow() {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [editingMsg, setEditingMsg] = useState(null);
+  const [forwardingMsg, setForwardingMsg] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [showHeaderProfile, setShowHeaderProfile] = useState(false);
   const messagesEndRef = useRef(null);
@@ -129,6 +131,10 @@ export default function ChatWindow() {
 
   const handleDelete = (msg) => {
     deleteMessage(activeChat.id, msg.id).catch(() => toast.error("Failed to delete message"));
+  };
+
+  const handleForward = (msg) => {
+    setForwardingMsg(msg);
   };
 
   const handleImageSelect = (e) => {
@@ -251,6 +257,7 @@ export default function ChatWindow() {
                 isOwn={msg.sender_id === user?.id}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onForward={handleForward}
               />
             </div>
           );
@@ -327,6 +334,11 @@ export default function ChatWindow() {
           </button>
         </div>
       </form>
+
+      {/* Forward modal */}
+      {forwardingMsg && (
+        <ForwardModal message={forwardingMsg} onClose={() => setForwardingMsg(null)} />
+      )}
     </div>
   );
 }

@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models import Chat, Message, User, chat_members, ReadReceipt
-from app.schemas import ChatCreate, ChatOut, MessageCreate, MessageOut, MessageStatusUpdate, MessageEdit, UserOut
+from app.schemas import ChatCreate, ChatOut, MessageCreate, MessageOut, MessageStatusUpdate, MessageEdit, ForwardMessageRequest, UserOut
 from app.security import get_current_user
 from app.routers.ws import manager
 
@@ -170,7 +170,7 @@ async def list_messages(
 
     result = await db.execute(
         select(Message)
-        .options(selectinload(Message.sender))
+        .options(selectinload(Message.sender), selectinload(Message.forwarded_from))
         .where(Message.chat_id == chat_id)
         .order_by(Message.created_at.desc())
         .limit(limit)
@@ -427,3 +427,76 @@ async def delete_message(
     }
     for uid in member_ids:
         await manager.send_to_user(uid, payload)
+
+
+# ---------- forward ----------
+
+@router.post("/forward", response_model=MessageOut, status_code=status.HTTP_201_CREATED)
+async def forward_message(
+    body: ForwardMessageRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Forward an existing message to another chat."""
+    # Load the original message
+    result = await db.execute(
+        select(Message).options(selectinload(Message.sender)).where(Message.id == body.message_id)
+    )
+    original = result.scalar_one_or_none()
+    if not original:
+        raise HTTPException(404, "Original message not found")
+
+    # Check user is a member of the source chat
+    src_membership = await db.execute(
+        select(chat_members).where(
+            and_(chat_members.c.chat_id == original.chat_id, chat_members.c.user_id == user.id)
+        )
+    )
+    if not src_membership.first():
+        raise HTTPException(403, "Not a member of the source chat")
+
+    # Check user is a member of the target chat
+    dst_membership = await db.execute(
+        select(chat_members).where(
+            and_(chat_members.c.chat_id == body.to_chat_id, chat_members.c.user_id == user.id)
+        )
+    )
+    if not dst_membership.first():
+        raise HTTPException(403, "Not a member of the target chat")
+
+    # Create forwarded message
+    forwarded_from_id = original.sender_id
+    msg = Message(
+        chat_id=body.to_chat_id,
+        sender_id=user.id,
+        content=original.content,
+        image_url=original.image_url,
+        forwarded_from_id=forwarded_from_id,
+        status="sent",
+    )
+    db.add(msg)
+    await db.commit()
+    await db.refresh(msg)
+
+    # Load relationships
+    result = await db.execute(
+        select(Message)
+        .options(selectinload(Message.sender), selectinload(Message.forwarded_from))
+        .where(Message.id == msg.id)
+    )
+    msg = result.scalar_one()
+    msg_out = MessageOut.model_validate(msg)
+
+    # Notify target chat members via WebSocket
+    members_result = await db.execute(
+        select(chat_members.c.user_id).where(chat_members.c.chat_id == body.to_chat_id)
+    )
+    member_ids = [row[0] for row in members_result.fetchall()]
+    payload = {
+        "type": "new_message",
+        "message": msg_out.model_dump(mode="json"),
+    }
+    for uid in member_ids:
+        await manager.send_to_user(uid, payload)
+
+    return msg_out

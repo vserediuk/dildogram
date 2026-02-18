@@ -92,6 +92,8 @@ class MessageOut(BaseModel):
     content: Optional[str] = None
     image_url: Optional[str] = None
     is_edited: bool = False
+    forwarded_from_id: Optional[uuid.UUID] = None
+    forwarded_from: Optional[UserOut] = None
     status: str
     created_at: datetime
 
@@ -105,6 +107,11 @@ class MessageStatusUpdate(BaseModel):
 
 class MessageEdit(BaseModel):
     content: str = Field(..., min_length=1, max_length=10000)
+
+
+class ForwardMessageRequest(BaseModel):
+    message_id: uuid.UUID
+    to_chat_id: uuid.UUID
 
 
 # ---------- resolve forward refs ----------

@@ -106,6 +106,11 @@ export const useChatStore = create((set, get) => ({
     await api.delete(`/chats/${chatId}/messages/${messageId}`);
   },
 
+  forwardMessage: async (messageId, toChatId) => {
+    const res = await api.post(`/chats/forward`, { message_id: messageId, to_chat_id: toChatId });
+    return res.data;
+  },
+
   applyMessageEdit: (message) => {
     set({
       messages: get().messages.map((m) =>
