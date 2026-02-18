@@ -9,10 +9,11 @@ import dayjs from "dayjs";
 
 export default function ChatWindow() {
   const { user } = useAuthStore();
-  const { activeChat, messages, fetchMessages, typingUsers, onlineUsers, sendImage } = useChatStore();
+  const { activeChat, messages, fetchMessages, typingUsers, onlineUsers, sendImage, editMessage, deleteMessage } = useChatStore();
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const [imageFile, setImageFile] = useState(null);
+  const [editingMsg, setEditingMsg] = useState(null);
   const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -43,8 +44,29 @@ export default function ChatWindow() {
     e.preventDefault();
     const trimmed = text.trim();
     if (!trimmed || !activeChat) return;
-    sendWS({ type: "message", chat_id: activeChat.id, content: trimmed });
+
+    if (editingMsg) {
+      editMessage(activeChat.id, editingMsg.id, trimmed)
+        .then(() => setEditingMsg(null))
+        .catch(() => toast.error("Failed to edit message"));
+    } else {
+      sendWS({ type: "message", chat_id: activeChat.id, content: trimmed });
+    }
     setText("");
+  };
+
+  const handleEdit = (msg) => {
+    setEditingMsg(msg);
+    setText(msg.content || "");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMsg(null);
+    setText("");
+  };
+
+  const handleDelete = (msg) => {
+    deleteMessage(activeChat.id, msg.id).catch(() => toast.error("Failed to delete message"));
   };
 
   const handleImageSelect = (e) => {
@@ -167,12 +189,29 @@ export default function ChatWindow() {
                   </span>
                 </div>
               )}
-              <MessageBubble message={msg} isOwn={msg.sender_id === user?.id} />
+              <MessageBubble
+                message={msg}
+                isOwn={msg.sender_id === user?.id}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
             </div>
           );
         })}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Edit indicator */}
+      {editingMsg && (
+        <div className="px-4 py-2 bg-tg-sidebar border-t border-gray-700/50 flex items-center gap-2">
+          <div className="w-1 h-8 bg-tg-blue rounded-full" />
+          <div className="flex-1 min-w-0">
+            <div className="text-tg-blue text-xs font-semibold">Editing</div>
+            <div className="text-tg-muted text-xs truncate">{editingMsg.content}</div>
+          </div>
+          <button onClick={handleCancelEdit} className="text-tg-muted hover:text-tg-text text-lg">✕</button>
+        </div>
+      )}
 
       {/* Image preview */}
       {imagePreview && (

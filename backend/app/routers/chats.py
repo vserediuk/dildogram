@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models import Chat, Message, User, chat_members, ReadReceipt
-from app.schemas import ChatCreate, ChatOut, MessageCreate, MessageOut, MessageStatusUpdate, UserOut
+from app.schemas import ChatCreate, ChatOut, MessageCreate, MessageOut, MessageStatusUpdate, MessageEdit, UserOut
 from app.security import get_current_user
 from app.routers.ws import manager
 
@@ -350,3 +350,78 @@ async def get_or_create_private_chat(
     )
     chat = result.scalar_one()
     return await _build_chat_out(chat, db)
+
+
+# ---------- edit / delete messages ----------
+
+@router.put("/{chat_id}/messages/{message_id}", response_model=MessageOut)
+async def edit_message(
+    chat_id: uuid.UUID,
+    message_id: uuid.UUID,
+    body: MessageEdit,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Message).options(selectinload(Message.sender)).where(
+            Message.id == message_id, Message.chat_id == chat_id
+        )
+    )
+    msg = result.scalar_one_or_none()
+    if not msg:
+        raise HTTPException(404, "Message not found")
+    if msg.sender_id != user.id:
+        raise HTTPException(403, "You can only edit your own messages")
+
+    msg.content = body.content
+    await db.commit()
+    await db.refresh(msg)
+
+    msg_out = MessageOut.model_validate(msg)
+
+    # Notify chat members
+    members_result = await db.execute(
+        select(chat_members.c.user_id).where(chat_members.c.chat_id == chat_id)
+    )
+    member_ids = [row[0] for row in members_result.fetchall()]
+    payload = {
+        "type": "message_edited",
+        "message": msg_out.model_dump(mode="json"),
+    }
+    for uid in member_ids:
+        await manager.send_to_user(uid, payload)
+
+    return msg_out
+
+
+@router.delete("/{chat_id}/messages/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_message(
+    chat_id: uuid.UUID,
+    message_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Message).where(Message.id == message_id, Message.chat_id == chat_id)
+    )
+    msg = result.scalar_one_or_none()
+    if not msg:
+        raise HTTPException(404, "Message not found")
+    if msg.sender_id != user.id:
+        raise HTTPException(403, "You can only delete your own messages")
+
+    await db.delete(msg)
+    await db.commit()
+
+    # Notify chat members
+    members_result = await db.execute(
+        select(chat_members.c.user_id).where(chat_members.c.chat_id == chat_id)
+    )
+    member_ids = [row[0] for row in members_result.fetchall()]
+    payload = {
+        "type": "message_deleted",
+        "message_id": str(message_id),
+        "chat_id": str(chat_id),
+    }
+    for uid in member_ids:
+        await manager.send_to_user(uid, payload)

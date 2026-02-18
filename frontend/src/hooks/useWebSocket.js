@@ -31,6 +31,12 @@ function handleMessage(event) {
     case "avatar_updated":
       store.fetchChats();
       break;
+    case "message_edited":
+      store.applyMessageEdit(data.message);
+      break;
+    case "message_deleted":
+      store.applyMessageDelete(data.message_id, data.chat_id);
+      break;
   }
 }
 

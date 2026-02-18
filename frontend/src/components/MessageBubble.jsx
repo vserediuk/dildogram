@@ -1,18 +1,38 @@
+import { useState, useRef, useEffect } from "react";
 import dayjs from "dayjs";
 import { mediaUrl } from "../utils";
 
-export default function MessageBubble({ message, isOwn }) {
+export default function MessageBubble({ message, isOwn, onEdit, onDelete }) {
   const time = dayjs(message.created_at).format("HH:mm");
   const hasImage = !!message.image_url;
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!showMenu) return;
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showMenu]);
+
+  const handleContextMenu = (e) => {
+    if (!isOwn) return;
+    e.preventDefault();
+    setShowMenu(true);
+  };
 
   return (
-    <div className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-1`}>
+    <div className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-1 group`}>
       <div
-        className={`max-w-[70%] ${hasImage ? "p-1" : "px-3 py-2"} rounded-2xl text-sm leading-relaxed ${
+        className={`relative max-w-[70%] ${hasImage ? "p-1" : "px-3 py-2"} rounded-2xl text-sm leading-relaxed ${
           isOwn
             ? "bg-tg-bubble-own rounded-br-md"
             : "bg-tg-sidebar rounded-bl-md"
         }`}
+        onContextMenu={handleContextMenu}
       >
         {/* Sender name for group chats */}
         {!isOwn && message.sender && (
@@ -39,6 +59,9 @@ export default function MessageBubble({ message, isOwn }) {
             <span className="break-words whitespace-pre-wrap">{message.content}</span>
           )}
           <span className="flex items-center gap-0.5 flex-shrink-0 self-end ml-auto">
+            {message.edited && (
+              <span className="text-[10px] text-tg-muted leading-none mr-0.5">edited</span>
+            )}
             <span className="text-[10px] text-tg-muted leading-none">{time}</span>
             {isOwn && (
               <span
@@ -55,7 +78,41 @@ export default function MessageBubble({ message, isOwn }) {
             )}
           </span>
         </div>
+
+        {/* Context menu */}
+        {showMenu && isOwn && (
+          <div
+            ref={menuRef}
+            className="absolute bottom-full right-0 mb-1 bg-tg-sidebar border border-gray-600 rounded-lg shadow-xl z-50 overflow-hidden min-w-[120px]"
+          >
+            {message.content && (
+              <button
+                onClick={() => { setShowMenu(false); onEdit?.(message); }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-tg-hover transition flex items-center gap-2"
+              >
+                ✏️ Edit
+              </button>
+            )}
+            <button
+              onClick={() => { setShowMenu(false); onDelete?.(message); }}
+              className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-tg-hover transition flex items-center gap-2"
+            >
+              🗑️ Delete
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Hover action button (alternative to right-click) */}
+      {isOwn && (
+        <button
+          onClick={() => setShowMenu(!showMenu)}
+          className="opacity-0 group-hover:opacity-100 self-center ml-1 text-tg-muted hover:text-tg-text text-xs transition"
+          title="Actions"
+        >
+          ⋮
+        </button>
+      )}
     </div>
   );
 }

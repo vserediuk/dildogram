@@ -32,7 +32,7 @@ export default function Sidebar() {
       <div className="p-3 flex items-center gap-2">
         <button
           onClick={() => navigate("/profile")}
-          className="w-10 h-10 rounded-full bg-tg-blue flex items-center justify-center text-lg font-bold hover:brightness-110 transition flex-shrink-0"
+          className="w-10 h-10 rounded-full bg-tg-blue flex items-center justify-center text-lg font-bold hover:brightness-110 transition flex-shrink-0 overflow-hidden"
         >
           {user?.avatar_url ? (
             <img src={mediaUrl(user.avatar_url)} alt="" className="w-10 h-10 rounded-full object-cover" />

@@ -102,6 +102,10 @@ class MessageStatusUpdate(BaseModel):
     status: str  # "delivered" | "read"
 
 
+class MessageEdit(BaseModel):
+    content: str = Field(..., min_length=1, max_length=10000)
+
+
 # ---------- resolve forward refs ----------
 
 ChatOut.model_rebuild()

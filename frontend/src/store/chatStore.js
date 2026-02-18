@@ -96,6 +96,47 @@ export const useChatStore = create((set, get) => ({
     });
   },
 
+  editMessage: async (chatId, messageId, content) => {
+    const res = await api.put(`/chats/${chatId}/messages/${messageId}`, { content });
+    return res.data;
+  },
+
+  deleteMessage: async (chatId, messageId) => {
+    await api.delete(`/chats/${chatId}/messages/${messageId}`);
+  },
+
+  applyMessageEdit: (message) => {
+    set({
+      messages: get().messages.map((m) =>
+        m.id === message.id ? { ...m, content: message.content, edited: true } : m
+      ),
+    });
+    // Update last_message in chat list if needed
+    const { chats } = get();
+    set({
+      chats: chats.map((c) =>
+        c.last_message?.id === message.id
+          ? { ...c, last_message: { ...c.last_message, content: message.content } }
+          : c
+      ),
+    });
+  },
+
+  applyMessageDelete: (messageId, chatId) => {
+    const { messages, chats } = get();
+    const filtered = messages.filter((m) => m.id !== messageId);
+    set({ messages: filtered });
+    // Update last_message in chat list
+    set({
+      chats: chats.map((c) => {
+        if (c.last_message?.id === messageId) {
+          return { ...c, last_message: filtered.length > 0 && c.id === chatId ? filtered[filtered.length - 1] : null };
+        }
+        return c;
+      }),
+    });
+  },
+
   setTyping: (chatId, userId) => {
     const { typingUsers } = get();
     const existing = typingUsers[chatId] || new Set();
